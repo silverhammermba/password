@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+
+		<title>Password Generator</title>
+
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+		<style type="text/css">
+#password {
+	font-family: monospace;
+	height: auto;
+}
+#chars label {
+	font-family: monospace;
+	border: 1px solid gray;
+	border-radius: 4px;
+	padding: 0 4px;
+}
+#chars label.off {
+	background-color: lightgrey;
+}
+		</style>
+
+		<!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+		<!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+		<!--[if lt IE 9]>
+			<script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+			<script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+		<![endif]-->
+	</head>
+	<body>
+		<div class="container">
+			<div class="row">
+				<div class="col-xs-12">
+					<h1>Generate an ASCII password</h1>
+					<form class="form-inline">
+						<div class="form-group">
+							<input id="password" type="text" class="form-control" placeholder="Password">
+							<button id="generate" type="button" class="btn btn-primary">Generate</button>
+						</div>
+					</form><form>
+						<div class="form-group">
+							<label>Length <input id="length" type="number" class="form-control" min="1" step="1" value="12"></label>
+							<label>Bits of entropy <input id="entropy" type="number" class="form-control" min="1" step="1"></label>
+						</div>
+						<h2>Allowed character classes</h2>
+						<div class="form-group" id="classes">
+							<div class="checkbox">
+							<label><input type="checkbox" value="numbers" checked> Numbers (0&ndash;9)</label>
+							</div><div class="checkbox">
+							<label><input type="checkbox" value="lowercase" checked> Lowercase (a&ndash;z)</label>
+							</div><div class="checkbox">
+							<label><input type="checkbox" value="uppercase" checked> Uppercase (A&ndash;Z)</label>
+							</div><div class="checkbox">
+							<label><input type="checkbox" value="other" checked> Other (!, #, ~, etc.)</label>
+							</div>
+						</div>
+					</form>
+				</div>
+			</div><div class="row">
+				<div class="col-xs-12" id="chars">
+					<h2>Allowed characters</h2>
+				</div>
+			</div>
+		</div>
+
+		<!-- jQuery -->
+		<script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+		<!-- Bootstrap -->
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+		<script>
+'use strict';
+
+var generate = document.getElementById('generate');
+var password = document.getElementById('password');
+var entropy = $('#entropy');
+var length = $('#length');
+var chars = $('#chars');
+
+// minimum and maximum (printable) ASCII characters
+var minmax = " ~";
+var mincode = minmax.codePointAt(0);
+var maxcode = minmax.codePointAt(1);
+
+// flags indicating which characters are allowed/disallowed
+var allowed = [];
+for (var i = mincode; i <= maxcode; ++i) {
+	allowed[i - mincode] = true;
+}
+// list of just allowed characters
+var available = [];
+
+// rebuild list of allowed characters
+function rebuildAvailable() {
+	available = [];
+	for (var i = 0; i < allowed.length; ++i) {
+		if (allowed[i]) available.push(i + mincode);
+	}
+	len2ent();
+}
+rebuildAvailable();
+
+// get string representation of a code point (to make space visible)
+function codeStr(i) {
+	var str = String.fromCodePoint(i);
+	if (str === " ") return "␠";
+	return str;
+}
+
+// random integer in [min, max)
+function getRandomInt(min, max) {
+	min = Math.ceil(min);
+	max = Math.floor(max);
+	return Math.floor(Math.random() * (max - min)) + min;
+}
+
+// set length to a valid value
+function setLength(l) {
+	l = Math.max(1, Math.round(l));
+	length.val(l);
+	return l;
+}
+
+// set entropy to a valid value
+function setEntropy(e) {
+	e = Math.max(1, Math.floor(e));
+	entropy.val(e);
+	return e;
+	// 70 is okay...
+	// 80 is good
+	// 90 is strong
+	// 128 industrial strength
+	// 256
+}
+
+// set the entropy from the current length
+function len2ent() {
+	var len = setLength(length.val());
+
+	var ent = Math.log(Math.pow(available.length, len)) / Math.log(2);
+	setEntropy(ent);
+}
+
+// return a random ASCII password
+function generate_password() {
+	if (available.length === 0)
+	{
+		setEntropy(0);
+		return "";
+	}
+
+	var length = Math.max(1, Math.round($('#length').val()));
+
+	var ent = Math.log(Math.pow(available.length, length)) / Math.log(2);
+	setEntropy(ent);
+
+	var pass = [];
+	for (var i = 0; i < length; ++i) {
+		pass[i] = available[getRandomInt(0, available.length)];
+	}
+
+	return String.fromCodePoint.apply(this, pass);
+}
+
+function setAllowed(i, v) {
+	allowed[i - mincode] = v;
+	$('#char' + i).parent().toggleClass('off', !v);
+}
+
+// add a checkbox for each character
+for (var i = mincode; i <= maxcode; ++i) {
+	var check = jQuery.parseHTML('<label><input type="checkbox" id="char' + i + '" value="' + i + '" checked>' + codeStr(i) + '</label> ');
+	chars.append(check);
+}
+// hook up checkboxes with global vars
+$(document).on('change', '#chars input', function() {
+	setAllowed($(this).val(), $(this).prop('checked'));
+	rebuildAvailable();
+});
+
+// hook up character class checkboxes
+$('#classes input').change(function() {
+	var classes = {
+		"numbers": [[48, 57]],
+		"lowercase": [[97, 122]],
+		"uppercase": [[65, 90]],
+		"other": [[32, 47], [58, 64], [91, 96], [123, 126]]
+	}
+	var ranges = classes[$(this).val()];
+	var value = $(this).prop('checked');
+
+	for (var i = 0; i < ranges.length; ++i) {
+		for (var j = ranges[i][0]; j <= ranges[i][1]; ++j) {
+			$('#char' + j).prop('checked', value);
+			setAllowed(j, value);
+		}
+	}
+	rebuildAvailable();
+});
+
+generate.addEventListener('click', function(event) {
+	password.value = generate_password();
+});
+length.change(len2ent);
+entropy.change(function() {
+	var ent = setEntropy(entropy.val());
+
+	var len = Math.ceil(Math.log(Math.pow(2, ent)) / Math.log(available.length));
+	setLength(len);
+	len2ent();
+});
+$(password).bind("input", function() {
+	setEntropy(0);
+});
+		</script>
+	</body>
+</html>
