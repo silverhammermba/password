@@ -87,7 +87,7 @@
 			<div id="otheropts">
 				<h3>Other Options</h3>
 				<div>
-					<input type="checkbox" id="spaces" value="spaces">
+					<input type="checkbox" id="spaces" value="spaces" onclick="schedule_update()">
 					<label for="spaces"> Avoid leading/trailing/consecutive spaces (more readable)</label>
 				</div>
 			</div>
@@ -144,17 +144,18 @@
 			AAAAAAAAAAAAAAAAAAAA.</p>
 			<p>To be precise:</p>
 			<ul>
-				<li>A password alone cannot have entropy. Once you pick the password, it&rsquo;s fixed and <a href="https://xkcd.com/221/">no longer random</a>. A <em>password generator</em> has entropy based on the possible passwords it can give you.</li>
+				<li>A password alone cannot have entropy in any meaningful sense. Once you pick the password, it&rsquo;s fixed and <a href="https://xkcd.com/221/">no longer random</a>. A <em>password generator</em> has entropy based on the possible passwords it can give you.</li>
 				<li>The password generator&rsquo;s entropy does not measure how hard it is to guess a generated password. That depends mostly on how the password guesser is designed to guess.</li>
 				<li>What is secure today is not necessarily secure tomorrow.</li>
 			</ul>
 			<p>Put all these together and this generator can seem
 			entirely useless. But the point of this generator is
 			that by using the full ASCII range, you get reasonably
-			short, reasonably high entropy passwords, that are
-			likely to work with whatever service you care to use
-			them with and which are <em>unlikely</em> to be easily
-			guessable.</p>
+			short passwords that are likely to work with whatever
+			service you care to use them with and which are
+			<em>very unlikely</em> to be the kinda of thing any
+			reasonable password guesser would try. That&rsquo;s what the
+			entropy measurement is really getting at.</p>
 			<p>There are password guessers out there that can
 			feasibly guess a 55 character password but <em>not</em>
 			a fully random ASCII one. A TODO character password from
@@ -163,6 +164,14 @@
 			guessable. The chances of you actually getting a bad
 			password out of this thing (as long your entropy is
 			reasonably high) are pretty small.</p>
+			<h3>What kind of moron generates their password on some stranger&rsquo;s website?</h3>
+			<p>I get that. That&rsquo;s why this page is a single
+			self-contained HTML file with the generator written in
+			a couple hundreds lines of documented, unobfuscated
+			Javascript. If you like the idea but don&rsquo;t trust
+			me, please download this page for your personal use and
+			scrutinize it for yourself to make sure it isn't doing
+			anything shady.</p>
 			<h3>What the %!#@&amp; is wrong with the length/entropy fields?</h3>
 			<p>Entropy is a function of the length and password
 			options you have chosen, so whenever you change any of
@@ -188,25 +197,20 @@ function getLength() {
 	return parseInt(document.getElementById('length').value, 10);
 }
 
-function setLength(l) {
-	l = Math.max(1, Math.round(l));
-	document.getElementById('length').value = l;
-	return l;
+function setLength(length) {
+	length = Math.max(1, Math.ceil(length));
+	document.getElementById('length').value = length;
+	return length;
 }
 
 function getEntropy() {
 	return parseInt(document.getElementById('entropy').value, 10);
 }
 
-function setEntropy(e) {
-	e = Math.max(1, Math.floor(e));
-	document.getElementById('entropy').value = e;
-	return e;
-	// 70 is okay...
-	// 80 is good
-	// 90 is strong
-	// 128 industrial strength
-	// 256
+function setEntropy(entropy) {
+	entropy = Math.max(1, Math.floor(entropy));
+	document.getElementById('entropy').value = entropy;
+	return entropy;
 }
 
 // get whether a character's checkbox is checked
@@ -237,32 +241,23 @@ function getRandomInt(min, max) {
 	return Math.floor(Math.random() * (max - min)) + min;
 }
 
-// set the entropy from the current length
-function len2ent() {
-	var len = setLength(getLength());
-
-	var ent = Math.log(Math.pow(available.length, len)) / Math.log(2);
-	setEntropy(ent);
-}
-
-function ent2len() {
-	var ent = setEntropy(getEntropy());
-
-	var len = Math.ceil(Math.log(Math.pow(2, ent)) / Math.log(available.length));
-	// TODO this doesn't work when decreasing entropy by 1, it should keep decreasing until password decreases by 1
-	// TODO this also doesn't work when typing in. it instantly changes numbers to something else. Maybe a delay whenever it changes?
-	setLength(len);
-	len2ent();
-}
-
-// update UI with random ASCII password based on current settings
-function generate_password() {
+// get all currently checked characters
+function availableCharacters() {
 	var available = [];
-
 
 	for (var codePoint = mincode; codePoint <= maxcode; ++codePoint) {
 		if (isCharEnabled(codePoint)) available.push(codePoint);
 	}
+
+	return available;
+}
+
+// update UI with random ASCII password based on current settings
+function generate_password() {
+	clearTimeout(update_timeout);
+	update_entropy();
+
+	var available = availableCharacters();
 
 	if (available.length === 0) return;
 
@@ -337,6 +332,8 @@ function letterClicked(checkbox) {
 	if (value == 32) {
 		document.getElementById("spaces").disabled = !checkbox.checked;
 	}
+
+	schedule_update();
 }
 
 // update UI after a class checkbox is clicked
@@ -349,7 +346,81 @@ function classClicked(checkbox) {
 			setCharEnabled(codePoint, enabled);
 		}
 	}
+
+	schedule_update();
 }
+
+// schedule entropy update after a delay
+function schedule_update(input) {
+	clearTimeout(update_timeout);
+	if (input) fixed_input = input.id;
+	update_timeout = setTimeout(update_entropy, update_delay);
+}
+
+// n choose k (combinations)
+function choose(n, k) {
+	if (k === n || k === 0) return 1;
+	var answer = 1;
+	for (var i = k + 1; i <= n; ++i) answer *= i;
+	for (var i = 2; i <= n - k; ++i) answer /= i;
+	return answer;
+}
+
+// calculate entropy from num_chars characters selected, length of password, and whether we allow consecutive spaces
+function length_to_entropy(num_chars, length, no_consecutive) {
+	var count;
+
+	if (no_consecutive) {
+		if (length >= 2) {
+			// sum over the number of possible spaces inside the password
+			var interior = 0;
+			for (var spaces = 0; spaces <= Math.floor((length - 1) / 2); ++spaces) {
+				interior += choose(length - spaces - 1, spaces) * Math.pow(num_chars - 1, length - spaces - 2)
+			}
+			count = interior * Math.pow(num_chars - 1, 2)
+		} else {
+			count = Math.pow(num_chars - 1, length);
+		}
+	} else {
+		count = Math.pow(num_chars, length);
+	}
+
+	return Math.floor(Math.log(count) / Math.log(2));
+}
+
+// calculate length from num_chars character selected, entropy required, and whether we allow consecutive spaces
+function entropy_to_length(num_chars, entropy, no_consecutive) {
+	if (no_consecutive) {
+		// TODO can't think of a good way to invert this... could do binary search
+		var length = 1;
+		while (length_to_entropy(num_chars, length, true) < entropy) {
+			++length;
+		}
+		return length;
+	}
+
+	return Math.ceil(Math.log(Math.pow(2, entropy)) / Math.log(num_chars));
+}
+
+// update entropy and/or length
+function update_entropy() {
+	var available = availableCharacters();
+
+	var no_consecutive = isCharEnabled(32) && document.getElementById("spaces").checked;
+
+	if (fixed_input === "entropy") {
+		setLength(entropy_to_length(available.length, getEntropy(), no_consecutive));
+	}
+
+	setEntropy(length_to_entropy(available.length, getLength(), no_consecutive));
+}
+
+// timeout for entropy update (to avoid stepping on user's input)
+var update_timeout;
+// ms to wait before updating entropy
+var update_delay = 1000;
+// whether we're doing entropy as a function of length or vice-versa
+var fixed_input = "length";
 
 // minimum and maximum (printable) ASCII characters
 var minmax = " ~";
