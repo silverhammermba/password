@@ -15,9 +15,17 @@
 		<title>Password Generator</title>
 
 		<style type="text/css">
+#pwd_container {
+	padding: 5px;
+}
+
 #password {
-	font-family: monospace;
+	font: 18pt monospace;
 	height: auto;
+}
+
+#password.placeholder {
+	color: grey;
 }
 
 :disabled + label {
@@ -55,8 +63,7 @@
 	<body>
 		<h1>Generate an ASCII password</h1>
 		<form>
-			<!-- TODO add explanation why editing this clears entropy -->
-			<input id="password" type="text" placeholder="Password" oninput="setEntropy(0)">
+			<div id="pwd_container"><span id="password" class="placeholder">Password</span></div>
 			<button type="button" onclick="generate_password()">Generate</button>
 		</form>
 		<form>
@@ -92,7 +99,6 @@
 				</div>
 			</div>
 		</form>
-		<!-- add a general blurb about what this all means and how/why to trust this page -->
 		<div id="chars">
 			<h2>Allowed characters</h2>
 		</div>
@@ -135,7 +141,7 @@
 			capabilities and choose your random password based on
 			the current state of affairs plus a few extra bits for
 			comfort. If you don&rsquo;t want to do that, I&rsquo;ll just say
-			that currently I aim for around TODO bits.
+			that currently I aim for around 85 bits.
 			</p>
 			<h3>But can&rsquo;t a long, random password still be insecure?</h3>
 			<p>Absolutely! You can set up this generator to make a
@@ -158,7 +164,7 @@
 			entropy measurement is really getting at.</p>
 			<p>There are password guessers out there that can
 			feasibly guess a 55 character password but <em>not</em>
-			a fully random ASCII one. A TODO character password from
+			a fully random ASCII one. A 39 character password from
 			this generator has 256 bits of entropy: way,
 			WAY outside the realm of anything even remotely
 			guessable. The chances of you actually getting a bad
@@ -183,7 +189,7 @@
 			the entropy updates the length it will again update the
 			entropy value to the <em>actual</em> entropy provided
 			at that length.</p>
-			<p>So, depending on the options you have selected, many
+			<p>So depending on the options you have selected, many
 			entropy values will be impossible to
 			achieve exactly and choosing such a value will cause the
 			entropy to update to the next-highest possible value
@@ -270,7 +276,9 @@ function generate_password() {
 		password = generate_random(available, length);
 	}
 
-	document.getElementById("password").value = password;
+	var element = document.getElementById("password");
+	element.textContent = password;
+	element.classList.remove('placeholder');
 }
 
 // return a random ASCII password allowing spaces, but no leading/trailing/consecutive spaces
@@ -357,48 +365,13 @@ function schedule_update(input) {
 	update_timeout = setTimeout(update_entropy, update_delay);
 }
 
-// n choose k (combinations)
-function choose(n, k) {
-	if (k === n || k === 0) return 1;
-	var answer = 1;
-	for (var i = k + 1; i <= n; ++i) answer *= i;
-	for (var i = 2; i <= n - k; ++i) answer /= i;
-	return answer;
-}
-
 // calculate entropy from num_chars characters selected, length of password, and whether we allow consecutive spaces
-function length_to_entropy(num_chars, length, no_consecutive) {
-	var count;
-
-	if (no_consecutive) {
-		if (length >= 2) {
-			// sum over the number of possible spaces inside the password
-			var interior = 0;
-			for (var spaces = 0; spaces <= Math.floor((length - 1) / 2); ++spaces) {
-				interior += choose(length - spaces - 1, spaces) * Math.pow(num_chars - 1, length - spaces - 2)
-			}
-			count = interior * Math.pow(num_chars - 1, 2)
-		} else {
-			count = Math.pow(num_chars - 1, length);
-		}
-	} else {
-		count = Math.pow(num_chars, length);
-	}
-
-	return Math.floor(Math.log(count) / Math.log(2));
+function length_to_entropy(num_chars, length) {
+	return Math.floor(Math.log(Math.pow(num_chars, length)) / Math.log(2));
 }
 
 // calculate length from num_chars character selected, entropy required, and whether we allow consecutive spaces
-function entropy_to_length(num_chars, entropy, no_consecutive) {
-	if (no_consecutive) {
-		// TODO can't think of a good way to invert this... could do binary search
-		var length = 1;
-		while (length_to_entropy(num_chars, length, true) < entropy) {
-			++length;
-		}
-		return length;
-	}
-
+function entropy_to_length(num_chars, entropy) {
 	return Math.ceil(Math.log(Math.pow(2, entropy)) / Math.log(num_chars));
 }
 
@@ -406,13 +379,16 @@ function entropy_to_length(num_chars, entropy, no_consecutive) {
 function update_entropy() {
 	var available = availableCharacters();
 
-	var no_consecutive = isCharEnabled(32) && document.getElementById("spaces").checked;
+	/* XXX this is *slightly* inaccurate because it doesn't take into
+	   account the consecutive spaces option, but that makes less than 1
+	   bit difference in entropy unless your entropy is already criminally
+	   small. so don't bother */
 
 	if (fixed_input === "entropy") {
-		setLength(entropy_to_length(available.length, getEntropy(), no_consecutive));
+		setLength(entropy_to_length(available.length, getEntropy()));
 	}
 
-	setEntropy(length_to_entropy(available.length, getLength(), no_consecutive));
+	setEntropy(length_to_entropy(available.length, getLength()));
 }
 
 // timeout for entropy update (to avoid stepping on user's input)
