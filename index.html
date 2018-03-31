@@ -77,16 +77,13 @@
 				<div>
 					<input type="checkbox" id="numbers" value="numbers" onclick="classClicked(this)" checked>
 					<label for="numbers"> Numbers (0&ndash;9)</label>
-				</div>
-				<div>
+				</div><div>
 					<input type="checkbox" id="lowercase" value="lowercase" onclick="classClicked(this)" checked>
 					<label for="lowercase"> Lowercase (a&ndash;z)</label>
-				</div>
-				<div>
+				</div><div>
 					<input type="checkbox" id="uppercase" value="uppercase" onclick="classClicked(this)" checked>
 					<label for="uppercase"> Uppercase (A&ndash;Z)</label>
-				</div>
-				<div>
+				</div><div>
 					<input type="checkbox" id="other" value="other" onclick="classClicked(this)" checked>
 					<label for="other"> Other (!, #, ~, etc.)</label>
 				</div>
@@ -96,6 +93,9 @@
 				<div>
 					<input type="checkbox" id="spaces" value="spaces" onclick="schedule_update()">
 					<label for="spaces"> Avoid leading/trailing/consecutive spaces (more readable)</label>
+				<div></div>
+					<input type="checkbox" id="secure" value="secure">
+					<label for="secure"> Use secure PRNG</label>
 				</div>
 			</div>
 		</form>
@@ -164,12 +164,12 @@
 			entropy measurement is really getting at.</p>
 			<p>There are password guessers out there that can
 			feasibly guess a 55 character password but <em>not</em>
-			a fully random ASCII one. A 39 character password from
-			this generator has 256 bits of entropy: way,
-			WAY outside the realm of anything even remotely
-			guessable. The chances of you actually getting a bad
-			password out of this thing (as long your entropy is
-			reasonably high) are pretty small.</p>
+			a fully random ASCII one. Setting the generator to 39
+			characters produces 256 bits of entropy: way, WAY
+			outside the realm of anything even remotely guessable.
+			The chances of you actually getting a bad password out
+			of this thing (as long your entropy is reasonably high)
+			are pretty small.</p>
 			<h3>What kind of moron generates their password on some stranger&rsquo;s website?</h3>
 			<p>I get that. That&rsquo;s why this page is a single
 			self-contained HTML file with the generator written in
@@ -241,9 +241,18 @@ function codeStr(i) {
 
 // random integer in [min, max)
 function getRandomInt(min, max) {
-	// TODO secure random?
-	min = Math.ceil(min);
-	max = Math.floor(max);
+	if (document.getElementById("secure").checked)
+	{
+		// mask off higher bits to speed up sampling
+		var mask = Math.pow(2, (max - 1).toString(2).length) - 1;
+		var byteArray = new Uint8Array(1);
+		do {
+			window.crypto.getRandomValues(byteArray);
+			byteArray[0] &= mask;
+		} while(byteArray[0] < min || byteArray[0] >= max);
+		return byteArray[0];
+	}
+
 	return Math.floor(Math.random() * (max - min)) + min;
 }
 
@@ -411,12 +420,22 @@ var classes = {
 	"other": [[32, 47], [58, 64], [91, 96], [123, 126]]
 }
 
+for (var klass in classes) {
+	document.getElementById(klass).checked = true;
+}
+
 // add a checkbox for each character
 for (var i = mincode; i <= maxcode; ++i) {
 	var template = document.createElement('template');
 	var id = 'char' + i;
 	template.innerHTML = '<div><input type="checkbox" id="' + id + '" value="' + i + '" onclick="letterClicked(this)" checked><label for="' + id + '">' + codeStr(i) + '</label></div>';
-	document.getElementById('chars').append(template.content.firstChild);
+	document.getElementById('chars').appendChild(template.content.firstChild);
+}
+
+if (!window.crypto) {
+	var secure = document.getElementById("secure");
+	secure.disabled = true;
+	secure.checked = false;
 }
 		</script>
 	</body>
