@@ -19,14 +19,36 @@
 	font-family: monospace;
 	height: auto;
 }
+
+:disabled + label {
+	color: grey;
+}
+
+/* TODO use grid? */
+#chars div {
+	display: inline-block;
+}
+
+#chars input[type=checkbox] {
+	display: none;
+}
+
 #chars label {
-	font-family: monospace;
 	border: 1px solid gray;
 	border-radius: 4px;
-	padding: 0 4px;
-}
-#chars label.off {
+	font-family: monospace;
+	padding: 2px 4px;
+	margin: 2px;
+	user-select: none;
 	background-color: lightgrey;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+}
+
+/* checked style */
+#chars input[type=checkbox]:checked + label {
+	background-color: white;
 }
 		</style>
 	</head>
@@ -39,45 +61,128 @@
 		</form>
 		<form>
 			<div>
-				<label>Length <input id="length" type="number" min="1" step="1" value="12" oninput="len2ent()"></label>
-				<label>Bits of entropy <input id="entropy" type="number" min="1" step="1" oninput="ent2len()"></label>
+				<label>Length <input id="length" type="number" min="1" step="1" value="12" oninput="schedule_update(this)"></label>
+				<label>Bits of entropy <input id="entropy" type="number" min="1" step="1" oninput="schedule_update(this)"></label>
 			</div>
-			<h2>Allowed character classes</h2>
+			<h2>Options</h2>
 			<div id="classes">
-				<div><label><input type="checkbox" value="numbers" onclick="classClicked(this)" checked> Numbers (0&ndash;9)</label></div>
-				<div><label><input type="checkbox" value="lowercase" onclick="classClicked(this)" checked> Lowercase (a&ndash;z)</label></div>
-				<div><label><input type="checkbox" value="uppercase" onclick="classClicked(this)" checked> Uppercase (A&ndash;Z)</label></div>
-				<div><label><input type="checkbox" value="other" onclick="classClicked(this)" checked> Other (!, #, ~, etc.)</label></div>
+				<h3>Allowed character classes</h3>
+				<div>
+					<input type="checkbox" id="numbers" value="numbers" onclick="classClicked(this)" checked>
+					<label for="numbers"> Numbers (0&ndash;9)</label>
+				</div>
+				<div>
+					<input type="checkbox" id="lowercase" value="lowercase" onclick="classClicked(this)" checked>
+					<label for="lowercase"> Lowercase (a&ndash;z)</label>
+				</div>
+				<div>
+					<input type="checkbox" id="uppercase" value="uppercase" onclick="classClicked(this)" checked>
+					<label for="uppercase"> Uppercase (A&ndash;Z)</label>
+				</div>
+				<div>
+					<input type="checkbox" id="other" value="other" onclick="classClicked(this)" checked>
+					<label for="other"> Other (!, #, ~, etc.)</label>
+				</div>
+			</div>
+			<div id="otheropts">
+				<h3>Other Options</h3>
+				<div>
+					<input type="checkbox" id="spaces" value="spaces">
+					<label for="spaces"> Avoid leading/trailing/consecutive spaces (more readable)</label>
+				</div>
 			</div>
 		</form>
 		<!-- add a general blurb about what this all means and how/why to trust this page -->
 		<div id="chars">
 			<h2>Allowed characters</h2>
 		</div>
+		<div id="about">
+			<h2>FAQ</h2>
+			<h3>What is this?</h3>
+			<p>This is a simple tool for generating passwords for
+			whatever purpose you might need. Simply tweak whatever
+			options you care about, then click &ldquo;Generate&rdquo; until you
+			get something you like.</p>
+			<h3>What is &ldquo;Bits of entropy&rdquo;?</h3>
+			<p>Entropy is a measure of disorder or randomness.
+			Examples of low-entropy passwords would be passwords
+			that contain dictionary words (hunter2), simple
+			patterns (12345), or lots of repetition (AAA111).</p>
+			<p>Passwords with low entropy are likely to be easier
+			for a human or computer to guess. Thus making them a
+			worse security measure. Simply put, a higher entropy
+			password is a more secure password.</p>
+			<h3>How much entropy do I need to be secure?</h3>
+			<p>Because of the exponential
+			nature of character combinations, increasing the
+			entropy of your password by just one bit makes it twice
+			as hard to guess. So while a 50-bit password could be
+			easily guessed on a moderately powerful computer, a
+			64-bit password might require highly specialized
+			hardware or software to be feasible, and a 256-bit
+			password is so far outside the realm of guessibility
+			that there&rsquo;s really no need to go so high.</p>
+			<p>But advances in password guessing are occurring all
+			the time, and those thresholds are always lowering. So
+			assuming that the only way an adversary can bypass your
+			password is by guessing it (not always a valid
+			assumption), the number of bits of entropy you need
+			depends on
+			<em>how long you need that password to be
+				unguessable</em>.
+			<p>If you want to do your due dilligence, you&rsquo;ll need
+			to read up on current password-cracking research and
+			capabilities and choose your random password based on
+			the current state of affairs plus a few extra bits for
+			comfort. If you don&rsquo;t want to do that, I&rsquo;ll just say
+			that currently I aim for around TODO bits.
+			</p>
+			<h3>But can&rsquo;t a long, random password still be insecure?</h3>
+			<p>Absolutely! You can set up this generator to make a
+			20 character password with maximum entropy and it still
+			might spit out an awful password like
+			AAAAAAAAAAAAAAAAAAAA.</p>
+			<p>To be precise:</p>
+			<ul>
+				<li>A password alone cannot have entropy. Once you pick the password, it&rsquo;s fixed and <a href="https://xkcd.com/221/">no longer random</a>. A <em>password generator</em> has entropy based on the possible passwords it can give you.</li>
+				<li>The password generator&rsquo;s entropy does not measure how hard it is to guess a generated password. That depends mostly on how the password guesser is designed to guess.</li>
+				<li>What is secure today is not necessarily secure tomorrow.</li>
+			</ul>
+			<p>Put all these together and this generator can seem
+			entirely useless. But the point of this generator is
+			that by using the full ASCII range, you get reasonably
+			short, reasonably high entropy passwords, that are
+			likely to work with whatever service you care to use
+			them with and which are <em>unlikely</em> to be easily
+			guessable.</p>
+			<p>There are password guessers out there that can
+			feasibly guess a 55 character password but <em>not</em>
+			a fully random ASCII one. A TODO character password from
+			this generator has 256 bits of entropy: way,
+			WAY outside the realm of anything even remotely
+			guessable. The chances of you actually getting a bad
+			password out of this thing (as long your entropy is
+			reasonably high) are pretty small.</p>
+			<h3>What the %!#@&amp; is wrong with the length/entropy fields?</h3>
+			<p>Entropy is a function of the length and password
+			options you have chosen, so whenever you change any of
+			those values the entropy updates. But I also let you do
+			it in reverse, so if you update the entropy it changes
+			the length needed to get that amount of entropy.
+			<em>But also</em> since changing the password length
+			often changes the entropy by several bits at a time, if
+			the entropy updates the length it will again update the
+			entropy value to the <em>actual</em> entropy provided
+			at that length.</p>
+			<p>So, depending on the options you have selected, many
+			entropy values will be impossible to
+			achieve exactly and choosing such a value will cause the
+			entropy to update to the next-highest possible value
+			after a short delay.</p>
+		</div>
 
 		<script>
 'use strict';
-
-// minimum and maximum (printable) ASCII characters
-var minmax = " ~";
-var mincode = minmax.codePointAt(0);
-var maxcode = minmax.codePointAt(1);
-
-// simple categories of character code points
-var classes = {
-	"numbers": [[48, 57]],
-	"lowercase": [[97, 122]],
-	"uppercase": [[65, 90]],
-	"other": [[32, 47], [58, 64], [91, 96], [123, 126]]
-}
-
-// flags indicating which characters are allowed/disallowed
-var allowed = [];
-for (var i = mincode; i <= maxcode; ++i) {
-	allowed[i - mincode] = true;
-}
-// list of just allowed characters TODO remove entirely?
-var available = [];
 
 function getLength() {
 	return parseInt(document.getElementById('length').value, 10);
@@ -104,15 +209,18 @@ function setEntropy(e) {
 	// 256
 }
 
-// rebuild list of allowed characters
-function rebuildAvailable() {
-	available = [];
-	for (var i = 0; i < allowed.length; ++i) {
-		if (allowed[i]) available.push(i + mincode);
-	}
-	len2ent();
+// get whether a character's checkbox is checked
+function isCharEnabled(codePoint) {
+	return document.getElementById("char" + codePoint).checked;
 }
-rebuildAvailable();
+
+// set whether a character's checkbox is checked (by actually clicking it)
+function setCharEnabled(codePoint, enabled) {
+	var current = isCharEnabled(codePoint);
+	if (enabled != current) {
+		document.getElementById('char' + codePoint).click();
+	}
+}
 
 // get string representation of a code point (to make space visible)
 function codeStr(i) {
@@ -123,6 +231,7 @@ function codeStr(i) {
 
 // random integer in [min, max)
 function getRandomInt(min, max) {
+	// TODO secure random?
 	min = Math.ceil(min);
 	max = Math.floor(max);
 	return Math.floor(Math.random() * (max - min)) + min;
@@ -146,55 +255,120 @@ function ent2len() {
 	len2ent();
 }
 
-// return a random ASCII password
+// update UI with random ASCII password based on current settings
 function generate_password() {
-	if (available.length === 0)
-	{
-		setEntropy(0);
-		return "";
+	var available = [];
+
+
+	for (var codePoint = mincode; codePoint <= maxcode; ++codePoint) {
+		if (isCharEnabled(codePoint)) available.push(codePoint);
 	}
 
-	var length = Math.max(1, Math.round(getLength()));
+	if (available.length === 0) return;
 
-	var ent = Math.log(Math.pow(available.length, length)) / Math.log(2);
-	setEntropy(ent);
+	var length = getLength();
+	var password;
 
-	var pass = [];
+	if (isCharEnabled(32) && document.getElementById("spaces").checked) {
+		password = generate_nice_spaces(available, length);
+	} else {
+		password = generate_random(available, length);
+	}
+
+	document.getElementById("password").value = password;
+}
+
+// return a random ASCII password allowing spaces, but no leading/trailing/consecutive spaces
+function generate_nice_spaces(available, length) {
+	var password = [];
 	for (var i = 0; i < length; ++i) {
-		pass[i] = available[getRandomInt(0, available.length)];
+		// XXX this is only called if we have spaces available, and space always comes first in ASCII, so just skip the first index if needed
+		var minindex = (i === 0 || i === length - 1 || i > 0 && password[i - 1] === 32) ? 1 : 0;
+		password.push(available[getRandomInt(minindex, available.length)]);
 	}
 
-	document.getElementById("password").value = String.fromCodePoint.apply(this, pass);
+	return String.fromCodePoint.apply(this, password);
 }
 
-function setAllowed(codePoint, isAllowed) {
-	allowed[codePoint - mincode] = isAllowed;
-	var checkbox = document.getElementById('char' + codePoint);
-	checkbox.checked = isAllowed;
-	checkbox.parentElement.classList.toggle('off', !isAllowed);
+// return a fully random ASCII password
+function generate_random(available, length) {
+	var password = [];
+	for (var i = 0; i < length; ++i) {
+		password.push(available[getRandomInt(0, available.length)]);
+	}
+
+	return String.fromCodePoint.apply(this, password);
 }
 
+// update UI after a letter checkbox is clicked
 function letterClicked(checkbox) {
-	setAllowed(parseInt(checkbox.value, 10), checkbox.checked);
-	rebuildAvailable();
-}
+	var value = parseInt(checkbox.value, 10);
 
-function classClicked(checkbox) {
-	var ranges = classes[checkbox.value];
-	var value = checkbox.checked;
+	// update any class checkboxes if we've manually updated a whole class
+	for (var klass in classes) {
+		// skip this class if it doesn't contain this checkbox
+		if (!classes[klass].some(function(range) { return range[0] <= value && range[1] >= value; })) continue;
 
-	for (var i = 0; i < ranges.length; ++i) {
-		for (var j = ranges[i][0]; j <= ranges[i][1]; ++j) {
-			setAllowed(j, value);
+		var classcheck = document.getElementById(klass);
+
+		// skip this class if we've updated the checkbox to match the class
+		if (checkbox.checked == classcheck.checked) continue;
+
+		// need all checkboxes to match this value in order to change it
+		var enabled = !classcheck.checked;
+
+		search:
+		for (var i = 0; i < classes[klass].length; ++i) {
+			for (var codePoint = classes[klass][i][0]; codePoint <= classes[klass][i][1]; ++codePoint) {
+				if (isCharEnabled(codePoint) != enabled) {
+					enabled = undefined;
+					break search;
+				}
+			}
+		}
+
+		if (enabled !== undefined) {
+			// set directly to avoid recursive loop
+			document.getElementById(klass).checked = enabled;
 		}
 	}
-	rebuildAvailable();
+
+	// space checkbox determines whether spaces option is available
+	if (value == 32) {
+		document.getElementById("spaces").disabled = !checkbox.checked;
+	}
+}
+
+// update UI after a class checkbox is clicked
+function classClicked(checkbox) {
+	var ranges = classes[checkbox.value];
+	var enabled = checkbox.checked;
+
+	for (var i = 0; i < ranges.length; ++i) {
+		for (var codePoint = ranges[i][0]; codePoint <= ranges[i][1]; ++codePoint) {
+			setCharEnabled(codePoint, enabled);
+		}
+	}
+}
+
+// minimum and maximum (printable) ASCII characters
+var minmax = " ~";
+var mincode = minmax.codePointAt(0);
+var maxcode = minmax.codePointAt(1);
+
+// simple categories of character code points
+var classes = {
+	"numbers": [[48, 57]],
+	"lowercase": [[97, 122]],
+	"uppercase": [[65, 90]],
+	"other": [[32, 47], [58, 64], [91, 96], [123, 126]]
 }
 
 // add a checkbox for each character
 for (var i = mincode; i <= maxcode; ++i) {
 	var template = document.createElement('template');
-	template.innerHTML = '<label><input type="checkbox" id="char' + i + '" value="' + i + '" onclick="letterClicked(this)" checked>' + codeStr(i) + '</label> ';
+	var id = 'char' + i;
+	template.innerHTML = '<div><input type="checkbox" id="' + id + '" value="' + i + '" onclick="letterClicked(this)" checked><label for="' + id + '">' + codeStr(i) + '</label></div>';
 	document.getElementById('chars').append(template.content.firstChild);
 }
 		</script>
