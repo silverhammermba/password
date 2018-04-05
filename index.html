@@ -289,7 +289,8 @@ function generate_password() {
 	var length = getLength();
 	var password;
 
-	if (isCharEnabled(32) && document.getElementById("spaces").checked) {
+	// XXX space is always first character if enabled
+	if (available.length > 1 && available[0] === 32 && document.getElementById("spaces").checked) {
 		password = generate_nice_spaces(available, length);
 	} else {
 		password = generate_random(available, length);
