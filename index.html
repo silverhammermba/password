@@ -16,17 +16,23 @@
 		<title>Password Generator</title>
 
 		<style>
-#pwd_container {
-	padding: 5px;
-}
-
 #password {
-	font: 18pt monospace;
-	height: auto;
+	float: left;
+	font-size: 18pt;
+	border: 1px solid gray;
+	padding: 10px;
 }
 
 #password.placeholder {
 	color: grey;
+	user-select: none;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+}
+
+form {
+	clear: both;
 }
 
 :disabled + label {
@@ -48,8 +54,8 @@
 	font-family: monospace;
 	padding: 2px 4px;
 	margin: 2px;
-	user-select: none;
 	background-color: lightgrey;
+	user-select: none;
 	-webkit-user-select: none;
 	-moz-user-select: none;
 	-ms-user-select: none;
@@ -59,15 +65,18 @@
 #chars input[type=checkbox]:checked + label {
 	background-color: white;
 }
+
+#faq {
+	margin-top: 50px;
+}
 		</style>
+
 	</head>
 	<body>
 		<h1>Generate an ASCII password</h1>
+		<pre id="password" class="placeholder">Password</pre>
 		<form>
-			<div id="pwd_container"><span id="password" class="placeholder">Password</span></div>
 			<button type="button" onclick="generate_password()">Generate</button>
-		</form>
-		<form>
 			<div>
 				<label>Length <input id="length" type="number" min="1" step="1" value="12" oninput="schedule_update(this)"></label>
 				<label>Bits of entropy <input id="entropy" type="number" min="1" step="1" oninput="schedule_update(this)"></label>
@@ -104,7 +113,7 @@
 			<h2>Allowed characters</h2>
 		</div>
 		<div id="about">
-			<h2>FAQ</h2>
+			<h2 id="faq">FAQ</h2>
 			<h3>What is this?</h3>
 			<p>This is a simple tool for generating passwords for
 			whatever purpose you might need. Simply tweak whatever
@@ -166,7 +175,7 @@
 			<p>There are password guessers out there that can
 			feasibly guess a 55 character password but <em>not</em>
 			a fully random ASCII one. Setting the generator to 39
-			characters produces 256 bits of entropy: way, WAY
+			characters produces 256 bits of entropy: way, <strong>way</strong>
 			outside the realm of anything even remotely guessable.
 			The chances of you actually getting a bad password out
 			of this thing (as long your entropy is reasonably high)
@@ -401,6 +410,8 @@ function update_entropy() {
 	setEntropy(length_to_entropy(available.length, getLength()));
 }
 
+/* GLOBALS */
+
 // timeout for entropy update (to avoid stepping on user's input)
 var update_timeout;
 // ms to wait before updating entropy
@@ -421,6 +432,9 @@ var classes = {
 	"other": [[32, 47], [58, 64], [91, 96], [123, 126]]
 }
 
+/* FIRST-TIME SETUP */
+
+// reset class states
 for (var klass in classes) {
 	document.getElementById(klass).checked = true;
 }
@@ -433,6 +447,10 @@ for (var i = mincode; i <= maxcode; ++i) {
 	document.getElementById('chars').appendChild(template.content.firstChild);
 }
 
+// ensure entropy is correct for checkbox states
+update_entropy();
+
+// check crypto availability
 if (!window.crypto) {
 	var secure = document.getElementById("secure");
 	secure.disabled = true;
